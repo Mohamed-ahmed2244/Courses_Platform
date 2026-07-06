@@ -1,0 +1,3 @@
+//username =>mohamedahmed
+// password=> mohamed2005
+// conection string =>mongodb+srv://mohamedahmed:<db_password>@cluster0.ntqbvv9.mongodb.net/?appName=Cluster0
