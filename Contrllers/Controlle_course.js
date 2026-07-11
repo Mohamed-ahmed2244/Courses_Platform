@@ -1,24 +1,74 @@
 const Course=require("../models/Couser_model");
+const deleteUploadedFile = require("../utils/delete-uploaded-file");
 
-const getAllCourses = async(req,res)=>{
-    try{
-        const courses =await Course.find();
 
-        res.status(200).json({
-            status:"success",
-            count:courses.length,
-            data:{
-                courses,
-            },
-        });
+function queriesIntoMongoDBOperators(query) {
+  const mongoQuery = {};
+
+  for (const key in query) {
+    const value = query[key];
+
+    const match = key.match(/^(.+)\[(gte|gt|lte|lt)\]$/);
+
+    if (match) {
+      const field = match[1];
+      const operator = `$${match[2]}`;
+
+      if (!mongoQuery[field]) {
+        mongoQuery[field] = {};
+      }
+
+      mongoQuery[field][operator] = Number(value);
+    } else {
+      mongoQuery[key] = {
+        $regex: value,
+        $options: "i",
+      };
     }
+  }
 
-    catch(error){
-        res.status(500).json({
-            status:"error",
-            message:`Failed to fetch course:${error.message}`,
-        });
-    }
+  return mongoQuery;
+}
+
+
+
+const getAllCourses = async (req, res) => {
+  try {
+
+  
+    const queryObj = { ...req.query };
+
+
+    const excludedFields = ["sort", "page", "limit"];
+    excludedFields.forEach((field) => delete queryObj[field]);
+
+
+    const mongoQuery = queriesIntoMongoDBOperators(queryObj);
+
+
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const courses = await Course.find(mongoQuery)
+      .sort(req.query.sort)
+      .skip(skip)
+      .limit(limit);
+
+    res.status(200).json({
+      status: "success",
+      count: courses.length,
+      data: {
+        courses,
+      },
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      status: "error",
+      message: `Failed to fetch course:${error.message}`,
+    });
+  }
 };
 
 const getCourseById=async(req,res)=>{
@@ -56,7 +106,8 @@ const createCourse=async(req,res)=>{
         const newCourse=await Course.create({
             ...req.body,
             category,
-            level
+            level,
+            image: req.file?.filename,
         });
         res.status(201).json({
             status:"success",
@@ -66,7 +117,11 @@ const createCourse=async(req,res)=>{
             },
         });
 
-    }catch(error){
+    }
+    catch(error){
+         if (req.file) {
+        deleteUploadedFile("courses", req.file.filename);
+    }
         res.status(400).json({
             status:"error",
             message:error.message,
@@ -78,24 +133,36 @@ const createCourse=async(req,res)=>{
 //updateCourse
 const updateCourse = async (req, res) => {
   try {
-    if (req.body.category) req.body.category = req.body.category.toLowerCase();
-    if (req.body.level) req.body.level = req.body.level.toLowerCase();
+    const course = await Course.findById(req.params.id);
 
-    const updatedCourse = await Course.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      {
-        new :true,
-        runValidators: true,
-      },
-    );
-
-    if (!updatedCourse) {
+    if (!course) {
       return res.status(404).json({
         status: "fail",
         message: "Course not found",
       });
     }
+
+    if (req.body.category) {
+      req.body.category = req.body.category.toLowerCase();
+    }
+
+    if (req.body.level) {
+      req.body.level = req.body.level.toLowerCase();
+    }
+
+   
+    if (req.file) {
+      req.body.image = req.file.filename;
+
+    
+      if (course.image) {
+        deleteUploadedFile("courses", course.image);
+      }
+    }
+
+    Object.assign(course, req.body);
+
+    const updatedCourse = await course.save();
 
     res.status(200).json({
       status: "success",
@@ -105,13 +172,17 @@ const updateCourse = async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(500).json({
+
+    if (req.file) {
+      deleteUploadedFile("courses", req.file.filename);
+    }
+
+    res.status(400).json({
       status: "error",
       message: error.message,
     });
   }
 };
-
 
 //Delete course
 const deleteCourse = async (req, res) => {
@@ -123,6 +194,10 @@ const deleteCourse = async (req, res) => {
         status: "fail",
         message: "Course not found",
       });
+    }
+
+     if (deletedCourse.image) {
+      deleteUploadedFile("courses", deletedCourse.image);
     }
 
     res.status(200).json({
@@ -139,6 +214,7 @@ const deleteCourse = async (req, res) => {
     });
   }
 };
+
 
 module.exports = {
   getAllCourses ,

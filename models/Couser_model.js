@@ -20,15 +20,16 @@ const courseSchema = new mongoose.Schema(
     category: {
       type: String,
       required: [true, "Course category is required"],
+      trim: true,
       enum: {
         values: [
-          "Frontend",
-          "Backend",
-          "Programming",
-          "Database",
-          "Design",
-          "Mobile Development",
-          "Cloud Computing",
+          "frontend",
+          "backend",
+          "programming",
+          "database",
+          "design",
+          "mobile development",
+          "cloud computing",
         ],
         message: "Invalid category",
       },
@@ -57,12 +58,13 @@ const courseSchema = new mongoose.Schema(
       type: Number,
       default: 0,
       min: [0, "Discount cannot be negative"],
-      max: [100, "Discount cannot exceed 100%"],
+      max: [100, "Discount cannot exceed 100"],
     },
 
     duration: {
       type: String,
       required: [true, "Course duration is required"],
+      trim: true,
     },
 
     lessons: {
@@ -74,8 +76,9 @@ const courseSchema = new mongoose.Schema(
     level: {
       type: String,
       required: [true, "Course level is required"],
+      trim: true,
       enum: {
-        values: ["Beginner", "Intermediate", "Advanced"],
+        values: ["beginner", "intermediate", "advanced"],
         message: "Invalid level",
       },
     },
@@ -83,11 +86,13 @@ const courseSchema = new mongoose.Schema(
     language: {
       type: String,
       required: [true, "Language is required"],
+      trim: true,
     },
 
     image: {
       type: String,
       required: [true, "Course image is required"],
+      trim: true,
     },
 
     rating: {
@@ -100,6 +105,7 @@ const courseSchema = new mongoose.Schema(
     students: {
       type: Number,
       default: 0,
+      min: [0, "Students count cannot be negative"],
     },
 
     certificate: {
@@ -119,8 +125,11 @@ const courseSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ["Draft", "Published"],
-      default: "Published",
+      enum: {
+        values: ["draft", "published"],
+        message: "Invalid status",
+      },
+      default: "published",
     },
   },
   {
