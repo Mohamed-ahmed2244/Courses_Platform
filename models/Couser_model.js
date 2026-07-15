@@ -17,23 +17,11 @@ const courseSchema = new mongoose.Schema(
       trim: true,
     },
 
-    category: {
-      type: String,
-      required: [true, "Course category is required"],
-      trim: true,
-      enum: {
-        values: [
-          "frontend",
-          "backend",
-          "programming",
-          "database",
-          "design",
-          "mobile development",
-          "cloud computing",
-        ],
-        message: "Invalid category",
-      },
-    },
+category: {
+  type: mongoose.Schema.Types.ObjectId,
+  ref: "Category",
+  required: [true, "Course category is required"],
+},
 
     description: {
       type: String,
@@ -136,5 +124,7 @@ const courseSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
+
+
 
 module.exports = mongoose.model("Course", courseSchema);

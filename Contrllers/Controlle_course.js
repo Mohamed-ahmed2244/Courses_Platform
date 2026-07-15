@@ -1,4 +1,5 @@
 const Course=require("../models/Couser_model");
+const Category = require("../models/Category_model");
 const deleteUploadedFile = require("../utils/delete-uploaded-file");
 
 
@@ -20,11 +21,17 @@ function queriesIntoMongoDBOperators(query) {
 
       mongoQuery[field][operator] = Number(value);
     } else {
-      mongoQuery[key] = {
-        $regex: value,
-        $options: "i",
-      };
-    }
+
+  if (key === "category") {
+    mongoQuery[key] = value;
+  } else {
+    mongoQuery[key] = {
+      $regex: value,
+      $options: "i",
+    };
+  }
+
+}
   }
 
   return mongoQuery;
@@ -51,6 +58,7 @@ const getAllCourses = async (req, res) => {
     const skip = (page - 1) * limit;
 
     const courses = await Course.find(mongoQuery)
+      .populate("category")
       .sort(req.query.sort)
       .skip(skip)
       .limit(limit);
@@ -73,7 +81,7 @@ const getAllCourses = async (req, res) => {
 
 const getCourseById=async(req,res)=>{
     try{
-      const course = await Course.findById(req.params.id);
+      const course = await Course.findById(req.params.id).populate("category");
 
       if(!course){
         return res.status(404).json({
@@ -98,43 +106,58 @@ const getCourseById=async(req,res)=>{
 };
 
 //createCourse
-const createCourse=async(req,res)=>{
-    try{
-        const category=req.body.category?.toLowerCase();
-        const level= req.body.level?.toLowerCase();
+const createCourse = async (req, res) => {
+  try {
 
-        const newCourse=await Course.create({
-            ...req.body,
-            category,
-            level,
-            image: req.file?.filename,
-        });
-        res.status(201).json({
-            status:"success",
-            message:"Course added successfully",
-            data:{
-                course:newCourse
-            },
-        });
+if (!req.body.category) {
+  return res.status(400).json({
+    status: "fail",
+    message: "Category is required",
+  });
+}
 
+const category = await Category.findById(req.body.category);
+    if (!category) {
+      return res.status(404).json({
+        status: "fail",
+        message: "Category not found",
+      });
     }
-    catch(error){
-         if (req.file) {
-        deleteUploadedFile("courses", req.file.filename);
+
+    const level = req.body.level?.toLowerCase();
+
+    const newCourse = await Course.create({
+      ...req.body,
+      level,
+      image: req.file?.filename,
+    });
+
+    res.status(201).json({
+      status: "success",
+      message: "Course added successfully",
+      data: {
+        course: newCourse,
+      },
+    });
+
+  } catch (error) {
+
+    if (req.file) {
+      deleteUploadedFile("courses", req.file.filename);
     }
-        res.status(400).json({
-            status:"error",
-            message:error.message,
-        });
-    }
+
+    res.status(400).json({
+      status: "error",
+      message: error.message,
+    });
+  }
 };
 
 
 //updateCourse
 const updateCourse = async (req, res) => {
   try {
-    const course = await Course.findById(req.params.id);
-
+const course = await Course.findById(req.params.id).populate("category");
     if (!course) {
       return res.status(404).json({
         status: "fail",
@@ -142,10 +165,18 @@ const updateCourse = async (req, res) => {
       });
     }
 
-    if (req.body.category) {
-      req.body.category = req.body.category.toLowerCase();
-    }
+   if (req.body.category) {
 
+  const category = await Category.findById(req.body.category);
+
+  if (!category) {
+    return res.status(404).json({
+      status: "fail",
+      message: "Category not found",
+    });
+  }
+
+}
     if (req.body.level) {
       req.body.level = req.body.level.toLowerCase();
     }
